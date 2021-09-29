@@ -8,23 +8,23 @@ from django.core.validators import validate_unicode_slug
 
 class Task(models.Model):
     type_choices = (
-        'текстовое задание',
-        'задание с картинкой',
-        'другое'
+        (1, 'текстовое задание'),
+        (2, 'задание с картинкой'),
+        (3, 'другое')
     )
     theme_choices = (
-        'Избавление от проговаривания',
-        'Схватывание и нахождение информации',
-        'Работа с текстом',
-        'Широта зрения',
-        'Зрительная память',
-        'Логическая память',
-        'Внимание',
-        'Регрессии',
+        (1, 'Избавление от проговаривания'),
+        (2, 'Схватывание и нахождение информации'),
+        (3, 'Работа с текстом'),
+        (4, 'Широта зрения'),
+        (5, 'Зрительная память'),
+        (6, 'Логическая память'),
+        (7, 'Внимание'),
+        (8, 'Регрессии'),
     )
     name = models.CharField(max_length=45, unique=True)
-    type = models.CharField(max_length=45, choices=type_choices)
-    theme = models.CharField(max_length=45, choices=theme_choices)
+    type = models.PositiveIntegerField(choices=type_choices, )
+    theme = models.PositiveIntegerField(choices=theme_choices)
     desription = models.CharField(max_length=100, blank=True)
     task_text = models.TextField(blank=True)
     use_in_testing = models.BooleanField()
@@ -38,13 +38,12 @@ class Task(models.Model):
 
 
 class Question(models.Model):
-    taskid = models.ForeignKey(Task, on_delete=models.CASCADE, primary_key=True)
+    taskid = models.ForeignKey(Task, on_delete=models.CASCADE, primary_key=True, unique=False)
     question = models.CharField(max_length=300)
     answer = models.CharField(max_length=45, validators=[validate_unicode_slug])
     p_answer1 = models.CharField(max_length=45, blank=True)
     p_answer2 = models.CharField(max_length=45, blank=True)
     p_answer3 = models.CharField(max_length=45, blank=True)
-    
     def __str__(self) -> str:
         return super().__str__()
 
@@ -72,17 +71,17 @@ class Course(models.Model):
         return super().__str__()
 
 class CourseTasks(models.Model):
-    idcourse = models.ManyToManyField(Course, primary_key=True)
-    idtask = models.ManyToManyField(Task, primary_key=True)
+    idcourse = models.ManyToManyField(Course)
+    idtask = models.ManyToManyField(Task)
 
     def __str__(self) -> str:
         return super().__str__()
 
 class User(AbstractUser):
-    age = models.PositiveIntegerField(blank=True)
+    age = models.PositiveIntegerField(blank=True, default=18)
     icon = models.ImageField(blank=True, upload_to='flashread/static/images')
     REQUIRED_FIELDS = [
-        'email', 'username', 'icon'
+        'email', 'icon'
     ]
 
     def __str__(self) -> str:
@@ -91,7 +90,7 @@ class User(AbstractUser):
 u = get_user_model()
 
 class UserParams(models.Model):
-    iduser = models.ForeignKey(User, on_delete=models.PROTECT, primary_key=True)
+    iduser = models.ForeignKey(User, on_delete=models.PROTECT, primary_key=True, unique=False)
     idparams = models.PositiveIntegerField()
     QER = models.PositiveIntegerField()
     WPM = models.PositiveIntegerField()
@@ -130,30 +129,30 @@ class Answer(models.Model):
 
 
 class UserTasks(TaskforAnswer):
-    iduser = models.ManyToManyField(User, primary_key=True)
-    idtask = models.ManyToManyField(Task, primary_key=True)
+    iduser = models.ManyToManyField(User)
+    idtask = models.ManyToManyField(Task)
 
     def __str__(self) -> str:
         return super().__str__()
 
 
 class TaskAnswer(Answer):
-    idusertask = models.ForeignKey(UserTasks, on_delete=models.CASCADE, primary_key=True)
+    idusertask = models.ForeignKey(UserTasks, on_delete=models.CASCADE, primary_key=True, unique=False)
 
     def __str__(self) -> str:
         return super().__str__()
 
 
 class UserCourses(models.Model):
-    iduser = models.ManyToManyField(User, primary_key=True)
-    idcourse = models.ManyToManyField(Course, primary_key=True)
+    iduser = models.ManyToManyField(User)
+    idcourse = models.ManyToManyField(Course)
 
     def __str__(self) -> str:
         return super().__str__()
 
 
 class UserCoursesTasks(TaskforAnswer):
-    idusercourses = models.ForeignKey(UserCourses, on_delete=models.CASCADE, primary_key=True)
+    idusercourses = models.ForeignKey(UserCourses, on_delete=models.CASCADE, primary_key=True, unique=False)
     is_complete = models.BooleanField(default=False)
 
     def __str__(self) -> str:
@@ -161,7 +160,7 @@ class UserCoursesTasks(TaskforAnswer):
 
 
 class UserCoursesTasksAnswer(Answer):
-    iductask = models.ForeignKey(UserCoursesTasks, on_delete=models.CASCADE, primary_key=True)
+    iductask = models.ForeignKey(UserCoursesTasks, on_delete=models.CASCADE, primary_key=True, unique=False)
     
     def __str__(self) -> str:
         return super().__str__()

@@ -3,7 +3,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.indexes import BrinIndex
-from django.utils import timezone
+from django.utils.timezone import now
 from django.core.validators import validate_unicode_slug
 
 class Task(models.Model):
@@ -30,9 +30,9 @@ class Task(models.Model):
     use_in_testing = models.BooleanField()
 
     class Meta:
-        indexes = (
-            BrinIndex(fields=['name'])
-        )
+        indexes = [
+            BrinIndex(fields=['name']),
+        ]
     def __str__(self):
         return self.name
 
@@ -40,7 +40,7 @@ class Task(models.Model):
 class Question(models.Model):
     taskid = models.ForeignKey(Task, on_delete=models.CASCADE, primary_key=True)
     question = models.CharField(max_length=300)
-    answer = models.CharField(max_length=45, validators=validate_unicode_slug)
+    answer = models.CharField(max_length=45, validators=[validate_unicode_slug])
     p_answer1 = models.CharField(max_length=45, blank=True)
     p_answer2 = models.CharField(max_length=45, blank=True)
     p_answer3 = models.CharField(max_length=45, blank=True)
@@ -61,7 +61,7 @@ class Course(models.Model):
 
     name = models.CharField(max_length=45, unique=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    date_of_creation = models.DateField(default=timezone.now)
+    date_of_creation = models.DateField(default=now)
     WPM_par = models.IntegerField(choices=PARAMS_CHOICES, default=LOW)
     BOFI_par = models.IntegerField(choices=PARAMS_CHOICES, default=LOW)
     VMem_par = models.IntegerField(choices=PARAMS_CHOICES, default=LOW)
@@ -72,15 +72,15 @@ class Course(models.Model):
         return super().__str__()
 
 class CourseTasks(models.Model):
-    idcourse = models.ManyToManyField('Course', on_delete = models.DELETE)
-    idtask = models.ManyToManyField('Task', on_delete = models.PROTECT)
+    idcourse = models.ManyToManyField(Course, primary_key=True)
+    idtask = models.ManyToManyField(Task, primary_key=True)
 
     def __str__(self) -> str:
         return super().__str__()
 
 class User(AbstractUser):
     age = models.PositiveIntegerField(blank=True)
-    icon = models.ImageField(blank=True)
+    icon = models.ImageField(blank=True, upload_to='flashread/static/images')
     REQUIRED_FIELDS = [
         'email', 'username', 'icon'
     ]
@@ -100,7 +100,7 @@ class UserParams(models.Model):
     VM = models.PositiveIntegerField()
     LM = models.PositiveIntegerField()
     Attention = models.PositiveIntegerField()
-    measure_date = models.DateTimeField(default=timezone.now)
+    measure_date = models.DateTimeField(default=now)
     
     def __str__(self) -> str:
         return super().__str__()
@@ -108,7 +108,7 @@ class UserParams(models.Model):
 
 class TaskforAnswer(models.Model):
     wasted_time = models.FloatField(blank=True)
-    date = models.DateField(default=timezone.now)
+    date = models.DateField(default=now)
     correctness = models.PositiveIntegerField(blank=True)
 
     class Meta:
@@ -120,7 +120,7 @@ class TaskforAnswer(models.Model):
 
 class Answer(models.Model):
     ans_number = models.PositiveIntegerField()
-    answer = models.CharField(max_length=45, validators=validate_unicode_slug) 
+    answer = models.CharField(max_length=45, validators=[validate_unicode_slug]) 
     
     class Meta:
         abstract = True
@@ -130,8 +130,8 @@ class Answer(models.Model):
 
 
 class UserTasks(TaskforAnswer):
-    iduser = models.ManyToManyField(User, on_delete = models.PROTECT, primary_key=True)
-    idtask = models.ManyToManyField(Task, on_delete = models.PROTECT, primary_key=True)
+    iduser = models.ManyToManyField(User, primary_key=True)
+    idtask = models.ManyToManyField(Task, primary_key=True)
 
     def __str__(self) -> str:
         return super().__str__()
@@ -145,8 +145,8 @@ class TaskAnswer(Answer):
 
 
 class UserCourses(models.Model):
-    iduser = models.ManyToManyField(User, on_delete = models.Protect, primary_key=True)
-    idcourse = models.ManyToManyField(Course, on_delete = models.Protect, primary_key=True)
+    iduser = models.ManyToManyField(User, primary_key=True)
+    idcourse = models.ManyToManyField(Course, primary_key=True)
 
     def __str__(self) -> str:
         return super().__str__()

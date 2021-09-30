@@ -1,30 +1,27 @@
-from django.db.models import fields
-from django.db.models.fields.related import ManyToManyField
+from django.db.models import query
 from rest_framework import serializers
 from .models import *
+from djoser.serializers import UserCreateSerializer
 
-# User
-# UserParams
-# UserCourses
-# UserCoursesTasks
-# UserCoursesTasksAnswer
-# UserTasks
-# Task - v
+# User - s -
+# UserParams - s
+# UserCourses - s
+# UserCoursesTasks - s
+# UserCoursesTasksAnswer - s
+# UserTasks - s -
+# Task - s -
 # TaskAnswer
-# Question - v
-# Course - v
-# CourseTasks - v
+# Question - s -
+# Course - s -
+# CourseTasks - s -
 
 
-# class FullTaskSerializer(serializers):
-#     pass
-
-class DynaminSerializer(serializers.ModelSerializer):
+class DynamycSerializer(serializers.ModelSerializer):
 
     def __init__(self, *args, **kwargs):
         fields = kwargs.pop('fields', None)
 
-        super(DynaminSerializer, self).__init__(*args, **kwargs)
+        super(DynamycSerializer, self).__init__(*args, **kwargs)
 
         if fields is not None:
             allowed = set(fields)
@@ -33,17 +30,12 @@ class DynaminSerializer(serializers.ModelSerializer):
                 self.fields.pop(field_name)
 
 
-class TaskSerializer(DynaminSerializer):
+class TaskSerializer(DynamycSerializer):
     
     class Meta:
         model = Task
         fields = '__all__'
 
-# class TaskSerializerForMany(serializers.ModelSerializer):
-    
-#     class Meta:
-#         model = Task
-#         fields = ['id', 'name']
 
 class QuiestionSerializer(serializers.ModelSerializer):
     task = TaskSerializer(fields = ('id', 'name'))
@@ -51,7 +43,7 @@ class QuiestionSerializer(serializers.ModelSerializer):
         model = Question
         fields = '__all__'
 
-class CourseSerializer(DynaminSerializer):
+class CourseSerializer(DynamycSerializer):
     
     WPM_par = serializers.CharField(source='get_WPM_par_display', read_only=True)
     BOFI_par = serializers.CharField(source='get_BOFI_par_display', read_only=True)
@@ -63,42 +55,82 @@ class CourseSerializer(DynaminSerializer):
         model = Course
         fields = '__all__'
 
-# class CourseSerializerForMany(serializers.ModelSerializer):
-#     class Meta:
-#         model = Course
-#         fields = ['id', 'name', 'task']
 
-
-class CoursewithTasksSerializer(serializers.ModelSerializer):
+class CoursewithTasksSerializer(CourseSerializer):
     task = TaskSerializer(fields = ('id', 'name', 'description'), many=True)
 
-    class Meta:
-        model = Course
-        fields = ['id', 'name', 'task']
 
-
-class CourseTasksSerializer(serializers.ModelSerializer):
+class UserSerializer(DynamycSerializer):
 
     class Meta:
-        model = CourseTasks
+        model = User
         fields = '__all__'
 
-# class User
 
-# class CourseSerializerForMany2(serializers.ModelSerializer):
-#     Course_set = TaskSerializer(many=True)
-#     class Meta:
-#         model = Course
-#         fields = ['id', 'name', 'Course_set']
+class UserwithTasksSerializer(UserSerializer):
+    tasks = TaskSerializer(fields = ('id', 'name', 'description'), many=True)
 
 
-# class CourseTasksSerializer(serializers.ModelSerializer):
-#     course = CourseSerializerForMany()
-#     task = TaskSerializerForMany()
+class UserwithCoursesSerializer(UserSerializer):
+    courses = CourseSerializer(fields = ('id', 'name', 'created_by'), many=True)
 
-# class TaskSerializer2(serializers.ModelSerializer):
-#     CCCCCCCC = CourseSerializerForMany(many=True)
 
-#     class Meta:
-#         model = Task
-#         fields = '__all__'
+class UserDailySerializer(serializers.ModelSerializer):
+    # user = serializers.PrimaryKeyRelatedField(many = True, queryset = User.objects.all())
+    user = UserSerializer(fields = ('username', 'taskinday'))
+
+    class Meta:
+        model = UserDaily
+        fields = '__all__'
+
+class UserParamsSerializer(DynamycSerializer):
+    user = UserSerializer(fields = ('username', 'age'))
+    
+    class Meta:
+        model = UserParams
+        fields = '__all__'
+
+
+class UserCoursesSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = UserCourses
+        fields = '__all__'
+
+
+class UserTasksSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = UserTasks
+        fields = '__all__'
+
+
+class TaskAnswerSerializer(serializers.ModelSerializer):
+    usertask = UserTasksSerializer()
+
+    class Meta:
+        model = TaskAnswer
+        fields = '__all__'
+
+
+class UserCoursesTaskSerializer(serializers.ModelSerializer):
+    usercourses = UserCoursesSerializer()
+
+    class Meta:
+        model = UserCoursesTasks
+        fields = '__all__'
+
+
+class UserCoursesTasksAnswerSerializer(serializers.ModelSerializer):
+    uctask = UserCoursesTaskSerializer()
+
+    class Meta:
+        model = UserCoursesTasksAnswer
+        fields = '__all__'
+
+
+class MyUserCreateSerializer(UserCreateSerializer):
+    class Meta(UserCreateSerializer.Meta):
+        model = User
+        fields = ('username', 'firstname', 'lastname', 'email', 'age', 'icon', 'taskinday')
+    

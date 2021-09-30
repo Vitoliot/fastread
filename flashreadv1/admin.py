@@ -3,6 +3,7 @@ from .models import *
 
 # Register your models here.
 admin.site.register(User)
+admin.site.register(UserDaily)
 admin.site.register(UserParams)
 admin.site.register(UserCourses)
 admin.site.register(UserCoursesTasks)

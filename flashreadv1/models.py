@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.postgres.indexes import BrinIndex
 from django.utils.timezone import now
 from django.core.validators import validate_unicode_slug
+from .validators import procent_validator
 
 class Task(models.Model):
     type_choices = (
@@ -66,38 +67,51 @@ class Course(models.Model):
     VMem_par = models.IntegerField(choices=PARAMS_CHOICES, default=LOW)
     LMem_par = models.IntegerField(choices=PARAMS_CHOICES, default=LOW)
     At_par = models.IntegerField(choices=PARAMS_CHOICES, default=LOW)
-    task = models.ManyToManyField(Task, through='CourseTasks', through_fields=('idcourse', 'idtask'), related_name='TaskCourse')
+    task = models.ManyToManyField(Task, through='CourseTasks', through_fields=('idcourse', 'task'), related_name='TaskCourse')
 
     def __str__(self) -> str:
         return super().__str__()
 
 class CourseTasks(models.Model):
     idcourse = models.ForeignKey(Course, on_delete=models.CASCADE)
-    idtask = models.ForeignKey(Task, on_delete=models.SET_DEFAULT, default=1)
+    task = models.ForeignKey(Task, on_delete=models.SET_DEFAULT, default=1)
 
     def __str__(self) -> str:
         return super().__str__()
+
 
 class User(AbstractUser):
     age = models.PositiveIntegerField(blank=True, default=18)
     icon = models.ImageField(blank=True, upload_to='flashread/static/images')
-    REQUIRED_FIELDS = [
-        'email', 'icon'
-    ]
-    courses = models.ManyToManyField(Course, through='UserCourses', through_fields=['iduser', 'idcourse'])
-    tasks = models.ManyToManyField(Task, through='UserTasks', through_fields=['iduser', 'idtask'])
+    taskinday = models.PositiveIntegerField(choices=((5, 'LOW'), (7, 'NORMAL'), (9, 'HIGH')))
+
+    # REQUIRED_FIELDS = [
+    #     'email', 'icon'
+    # ]
+    
+    courses = models.ManyToManyField(Course, through='UserCourses', through_fields=['user', 'idcourse'])
+    tasks = models.ManyToManyField(Task, through='UserTasks', through_fields=['user', 'task'])
 
     def __str__(self) -> str:
         return super().__str__()
 
-u = get_user_model()
+
+# u = get_user_model()
+
+
+class UserDaily(models.Model):
+    user = models.ForeignKey(User, on_delete=models.PROTECT, primary_key=True, unique=False)
+    task_amount = models.PositiveIntegerField()
+    # correctness_of_answers = models.PositiveIntegerField(blank=True, validators=[procent_validator])
+    date = models.DateField() 
+
 
 class UserParams(models.Model):
-    iduser = models.ForeignKey(User, on_delete=models.PROTECT, primary_key=True, unique=False)
+    user = models.ForeignKey(User, on_delete=models.PROTECT, primary_key=True, unique=False)
     idparams = models.PositiveIntegerField()
     QER = models.PositiveIntegerField()
     WPM = models.PositiveIntegerField()
-    text_proc = models.PositiveIntegerField()
+    text_proc = models.PositiveIntegerField(validators=[procent_validator])
     BOFI = models.PositiveIntegerField()
     VM = models.PositiveIntegerField()
     LM = models.PositiveIntegerField()
@@ -111,7 +125,7 @@ class UserParams(models.Model):
 class TaskforAnswer(models.Model):
     wasted_time = models.FloatField(blank=True)
     date = models.DateField(default=now)
-    correctness = models.PositiveIntegerField(blank=True)
+    correctness = models.PositiveIntegerField(blank=True, validators=[procent_validator])
 
     class Meta:
         abstract = True
@@ -123,6 +137,7 @@ class TaskforAnswer(models.Model):
 class Answer(models.Model):
     ans_number = models.PositiveIntegerField()
     answer = models.CharField(max_length=45, validators=[validate_unicode_slug]) 
+    date = models.DateField()
     
     class Meta:
         abstract = True
@@ -132,22 +147,22 @@ class Answer(models.Model):
 
 
 class UserTasks(TaskforAnswer):
-    iduser = models.ForeignKey(User, on_delete=models.CASCADE)
-    idtask = models.ForeignKey(Task, on_delete=models.PROTECT)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    task = models.ForeignKey(Task, on_delete=models.PROTECT)
 
     def __str__(self) -> str:
         return super().__str__()
 
 
 class TaskAnswer(Answer):
-    idusertask = models.ForeignKey(UserTasks, on_delete=models.CASCADE, primary_key=True, unique=False)
+    usertask = models.ForeignKey(UserTasks, on_delete=models.CASCADE, primary_key=True, unique=False)
 
     def __str__(self) -> str:
         return super().__str__()
 
 
 class UserCourses(models.Model):
-    iduser = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     idcourse = models.ForeignKey(Course, on_delete=models.PROTECT)
 
     def __str__(self) -> str:
@@ -155,7 +170,7 @@ class UserCourses(models.Model):
 
 
 class UserCoursesTasks(TaskforAnswer):
-    idusercourses = models.ForeignKey(UserCourses, on_delete=models.CASCADE, primary_key=True, unique=False)
+    usercourses = models.ForeignKey(UserCourses, on_delete=models.CASCADE, primary_key=True, unique=False)
     is_complete = models.BooleanField(default=False)
 
     def __str__(self) -> str:
@@ -163,7 +178,7 @@ class UserCoursesTasks(TaskforAnswer):
 
 
 class UserCoursesTasksAnswer(Answer):
-    iductask = models.ForeignKey(UserCoursesTasks, on_delete=models.CASCADE, primary_key=True, unique=False)
+    uctask = models.ForeignKey(UserCoursesTasks, on_delete=models.CASCADE, primary_key=True, unique=False)
     
     def __str__(self) -> str:
         return super().__str__()

@@ -25,7 +25,7 @@ class Task(models.Model):
     name = models.CharField(max_length=45, unique=True)
     type = models.PositiveIntegerField(choices=type_choices, )
     theme = models.PositiveIntegerField(choices=theme_choices)
-    desription = models.CharField(max_length=100, blank=True)
+    description = models.CharField(max_length=100, blank=True)
     task_text = models.TextField(blank=True)
     use_in_testing = models.BooleanField()
 
@@ -66,13 +66,14 @@ class Course(models.Model):
     VMem_par = models.IntegerField(choices=PARAMS_CHOICES, default=LOW)
     LMem_par = models.IntegerField(choices=PARAMS_CHOICES, default=LOW)
     At_par = models.IntegerField(choices=PARAMS_CHOICES, default=LOW)
+    task = models.ManyToManyField(Task, through='CourseTasks', through_fields=('idcourse', 'idtask'), related_name='TaskCourse')
 
     def __str__(self) -> str:
         return super().__str__()
 
 class CourseTasks(models.Model):
-    idcourse = models.ManyToManyField(Course)
-    idtask = models.ManyToManyField(Task)
+    idcourse = models.ForeignKey(Course, on_delete=models.CASCADE)
+    idtask = models.ForeignKey(Task, on_delete=models.SET_DEFAULT, default=1)
 
     def __str__(self) -> str:
         return super().__str__()
@@ -83,6 +84,8 @@ class User(AbstractUser):
     REQUIRED_FIELDS = [
         'email', 'icon'
     ]
+    courses = models.ManyToManyField(Course, through='UserCourses', through_fields=['iduser', 'idcourse'])
+    tasks = models.ManyToManyField(Task, through='UserTasks', through_fields=['iduser', 'idtask'])
 
     def __str__(self) -> str:
         return super().__str__()
@@ -129,8 +132,8 @@ class Answer(models.Model):
 
 
 class UserTasks(TaskforAnswer):
-    iduser = models.ManyToManyField(User)
-    idtask = models.ManyToManyField(Task)
+    iduser = models.ForeignKey(User, on_delete=models.CASCADE)
+    idtask = models.ForeignKey(Task, on_delete=models.PROTECT)
 
     def __str__(self) -> str:
         return super().__str__()
@@ -144,8 +147,8 @@ class TaskAnswer(Answer):
 
 
 class UserCourses(models.Model):
-    iduser = models.ManyToManyField(User)
-    idcourse = models.ManyToManyField(Course)
+    iduser = models.ForeignKey(User, on_delete=models.CASCADE)
+    idcourse = models.ForeignKey(Course, on_delete=models.PROTECT)
 
     def __str__(self) -> str:
         return super().__str__()

@@ -20,5 +20,6 @@ from django.conf import settings
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api-auth/', include('rest_framework.urls'))
+    path('api-auth/', include('rest_framework.urls')),
+    path('api/', include('flashreadv1.urls')),
 ] + static.static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

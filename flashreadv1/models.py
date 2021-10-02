@@ -3,7 +3,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.indexes import BrinIndex
-from django.utils.timezone import now
+from django.utils.timezone import make_naive, now
 from django.core.validators import validate_unicode_slug
 from .validators import procent_validator
 
@@ -67,13 +67,13 @@ class Course(models.Model):
     VMem_par = models.IntegerField(choices=PARAMS_CHOICES, default=LOW)
     LMem_par = models.IntegerField(choices=PARAMS_CHOICES, default=LOW)
     At_par = models.IntegerField(choices=PARAMS_CHOICES, default=LOW)
-    task = models.ManyToManyField(Task, through='CourseTasks', through_fields=('idcourse', 'task'), related_name='TaskCourse')
+    task = models.ManyToManyField(Task, through='CourseTasks', through_fields=('course', 'task'), related_name='TaskCourse')
 
     def __str__(self) -> str:
         return super().__str__()
 
 class CourseTasks(models.Model):
-    idcourse = models.ForeignKey(Course, on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, default=0)
     task = models.ForeignKey(Task, on_delete=models.SET_DEFAULT, default=1)
 
     def __str__(self) -> str:
@@ -83,13 +83,13 @@ class CourseTasks(models.Model):
 class User(AbstractUser):
     age = models.PositiveIntegerField(blank=True, default=18)
     icon = models.ImageField(blank=True, upload_to='flashread/static/images')
-    taskinday = models.PositiveIntegerField(choices=((5, 'LOW'), (7, 'NORMAL'), (9, 'HIGH')))
+    taskinday = models.PositiveIntegerField(choices=((5, 'LOW'), (7, 'NORMAL'), (9, 'HIGH')), default=5)
 
     # REQUIRED_FIELDS = [
     #     'email', 'icon'
     # ]
     
-    courses = models.ManyToManyField(Course, through='UserCourses', through_fields=['user', 'idcourse'])
+    courses = models.ManyToManyField(Course, through='UserCourses', through_fields=['user', 'course'])
     tasks = models.ManyToManyField(Task, through='UserTasks', through_fields=['user', 'task'])
 
     def __str__(self) -> str:
@@ -103,7 +103,7 @@ class UserDaily(models.Model):
     user = models.ForeignKey(User, on_delete=models.PROTECT, primary_key=True, unique=False)
     task_amount = models.PositiveIntegerField()
     # correctness_of_answers = models.PositiveIntegerField(blank=True, validators=[procent_validator])
-    date = models.DateField() 
+    date = models.DateField(default=now) 
 
 
 class UserParams(models.Model):
@@ -137,7 +137,7 @@ class TaskforAnswer(models.Model):
 class Answer(models.Model):
     ans_number = models.PositiveIntegerField()
     answer = models.CharField(max_length=45, validators=[validate_unicode_slug]) 
-    date = models.DateField()
+    date = models.DateField(default=now)
     
     class Meta:
         abstract = True
@@ -147,8 +147,8 @@ class Answer(models.Model):
 
 
 class UserTasks(TaskforAnswer):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    task = models.ForeignKey(Task, on_delete=models.PROTECT)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, default=0)
+    task = models.ForeignKey(Task, on_delete=models.PROTECT, default=0)
 
     def __str__(self) -> str:
         return super().__str__()
@@ -162,8 +162,8 @@ class TaskAnswer(Answer):
 
 
 class UserCourses(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    idcourse = models.ForeignKey(Course, on_delete=models.PROTECT)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, default=0)
+    course = models.ForeignKey(Course, on_delete=models.PROTECT, default=0)
 
     def __str__(self) -> str:
         return super().__str__()

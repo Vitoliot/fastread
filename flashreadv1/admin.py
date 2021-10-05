@@ -11,7 +11,7 @@ admin.site.register(UserCoursesTasksAnswer)
 admin.site.register(UserTasks)
 admin.site.register(Task)
 admin.site.register(TaskAnswer)
-admin.site.register(Question)
+admin.site.register(Questions)
 admin.site.register(Course)
 admin.site.register(CourseTasks)
 

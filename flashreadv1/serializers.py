@@ -1,5 +1,5 @@
 from django.db.models import query
-from rest_framework import serializers
+from rest_framework import fields, serializers
 from .models import *
 from djoser.serializers import UserCreateSerializer
 
@@ -11,7 +11,7 @@ from djoser.serializers import UserCreateSerializer
 # UserTasks - s -
 # Task - s -
 # TaskAnswer
-# Question - s -
+# Questions - s -
 # Course - s -
 # CourseTasks - s -
 
@@ -30,17 +30,32 @@ class DynamycSerializer(serializers.ModelSerializer):
                 self.fields.pop(field_name)
 
 
+class TaskTypeSerializer(DynamycSerializer):
+    
+    class Meta:
+        model = TaskType
+        fields = '__all__'
+
 class TaskSerializer(DynamycSerializer):
     
     class Meta:
         model = Task
         fields = '__all__'
 
+class TaskwithTypeSerializer(TaskSerializer):
+    tasktype = TaskTypeSerializer()
+    class Meta:
+        model = Task
+        fields = '__all__'
+
+class TaskTypewithTaskSerializer(TaskTypeSerializer):
+    task = TaskSerializer(many=True)
+
 
 class QuiestionSerializer(serializers.ModelSerializer):
     task = TaskSerializer(fields = ('id', 'name'))
     class Meta:
-        model = Question
+        model = Questions
         fields = '__all__'
 
 class CourseSerializer(DynamycSerializer):
@@ -57,7 +72,11 @@ class CourseSerializer(DynamycSerializer):
 
 
 class CoursewithTasksSerializer(CourseSerializer):
-    task = TaskSerializer(fields = ('id', 'name', 'description'), many=True)
+    task = TaskSerializer(many=True)
+
+
+class CoursewithTasksTypeSerializer(CourseSerializer):
+    task = TaskwithTypeSerializer(many=True)
 
 
 class UserSerializer(DynamycSerializer):
@@ -68,7 +87,7 @@ class UserSerializer(DynamycSerializer):
 
 
 class UserwithTasksSerializer(UserSerializer):
-    tasks = TaskSerializer(fields = ('id', 'name', 'description'), many=True)
+    tasks = TaskSerializer(many=True)
 
 
 class UserwithCoursesSerializer(UserSerializer):
@@ -77,7 +96,7 @@ class UserwithCoursesSerializer(UserSerializer):
 
 class UserDailySerializer(serializers.ModelSerializer):
     # user = serializers.PrimaryKeyRelatedField(many = True, queryset = User.objects.all())
-    user = UserSerializer(fields = ('username', 'taskinday'))
+    user = UserSerializer(fields = ('id', 'username', 'taskinday'))
 
     class Meta:
         model = UserDaily
@@ -132,5 +151,4 @@ class UserCoursesTasksAnswerSerializer(serializers.ModelSerializer):
 class MyUserCreateSerializer(UserCreateSerializer):
     class Meta(UserCreateSerializer.Meta):
         model = User
-        fields = ('username', 'firstname', 'lastname', 'email', 'age', 'icon', 'taskinday')
-    
+        fields = ('username', 'email', 'age', 'icon', 'taskinday') 

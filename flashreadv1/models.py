@@ -1,13 +1,14 @@
 from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from django.contrib.auth import get_user_model
 from django.contrib.postgres.indexes import BrinIndex
-from django.utils.timezone import make_naive, now
+from django.utils.timezone import now
 from django.core.validators import validate_unicode_slug
 from .validators import procent_validator
 
-class Task(models.Model):
+# добавить класс TaskType и связать с ним Task связью один ко многим и дописать сериализаторы
+
+class TaskType(models.Model):
     type_choices = (
         (1, 'текстовое задание'),
         (2, 'задание с картинкой'),
@@ -27,24 +28,35 @@ class Task(models.Model):
     type = models.PositiveIntegerField(choices=type_choices, )
     theme = models.PositiveIntegerField(choices=theme_choices)
     description = models.CharField(max_length=100, blank=True)
-    task_text = models.TextField(blank=True)
     use_in_testing = models.BooleanField()
 
-    class Meta:
-        indexes = [
-            BrinIndex(fields=['name']),
-        ]
+
+
     def __str__(self):
         return self.name
 
+class Task(models.Model):
+    tasktypeid = models.ForeignKey(TaskType, on_delete=models.CASCADE)
+    number = models.PositiveIntegerField()
+    task_text = models.TextField(blank=True)
 
-class Question(models.Model):
-    taskid = models.ForeignKey(Task, on_delete=models.CASCADE, primary_key=True, unique=False)
+    class Meta:
+        indexes = [
+            BrinIndex(fields=['tasktypeid']),
+        ]
+    def __str__(self) -> str:
+        return super().__str__()
+
+
+class Questions(models.Model):
+    qid = models.PositiveIntegerField(primary_key=True, default=1)
+    taskid = models.ForeignKey(Task, on_delete=models.CASCADE)
     question = models.CharField(max_length=300)
     answer = models.CharField(max_length=45, validators=[validate_unicode_slug])
     p_answer1 = models.CharField(max_length=45, blank=True)
     p_answer2 = models.CharField(max_length=45, blank=True)
     p_answer3 = models.CharField(max_length=45, blank=True)
+
     def __str__(self) -> str:
         return super().__str__()
 
@@ -54,9 +66,9 @@ class Course(models.Model):
     NORMAL = 1
     HIGH = 2
     PARAMS_CHOICES = (
-    (LOW, 'Low'),
-    (NORMAL, 'Normal'),
-    (HIGH, 'High'),
+        (LOW, 'Low'),
+        (NORMAL, 'Normal'),
+        (HIGH, 'High'),
     )
 
     name = models.CharField(max_length=45, unique=True)
@@ -67,10 +79,12 @@ class Course(models.Model):
     VMem_par = models.IntegerField(choices=PARAMS_CHOICES, default=LOW)
     LMem_par = models.IntegerField(choices=PARAMS_CHOICES, default=LOW)
     At_par = models.IntegerField(choices=PARAMS_CHOICES, default=LOW)
-    task = models.ManyToManyField(Task, through='CourseTasks', through_fields=('course', 'task'), related_name='TaskCourse')
+    task = models.ManyToManyField(Task, through='CourseTasks', through_fields=('course', 'task'),
+                                  related_name='TaskCourse')
 
     def __str__(self) -> str:
         return super().__str__()
+
 
 class CourseTasks(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, default=0)
@@ -88,7 +102,7 @@ class User(AbstractUser):
     # REQUIRED_FIELDS = [
     #     'email', 'icon'
     # ]
-    
+
     courses = models.ManyToManyField(Course, through='UserCourses', through_fields=['user', 'course'])
     tasks = models.ManyToManyField(Task, through='UserTasks', through_fields=['user', 'task'])
 
@@ -103,7 +117,7 @@ class UserDaily(models.Model):
     user = models.ForeignKey(User, on_delete=models.PROTECT, primary_key=True, unique=False)
     task_amount = models.PositiveIntegerField()
     # correctness_of_answers = models.PositiveIntegerField(blank=True, validators=[procent_validator])
-    date = models.DateField(default=now) 
+    date = models.DateField(default=now)
 
 
 class UserParams(models.Model):
@@ -117,7 +131,7 @@ class UserParams(models.Model):
     LM = models.PositiveIntegerField()
     Attention = models.PositiveIntegerField()
     measure_date = models.DateTimeField(default=now)
-    
+
     def __str__(self) -> str:
         return super().__str__()
 
@@ -136,9 +150,9 @@ class TaskforAnswer(models.Model):
 
 class Answer(models.Model):
     ans_number = models.PositiveIntegerField()
-    answer = models.CharField(max_length=45, validators=[validate_unicode_slug]) 
+    answer = models.CharField(max_length=45, validators=[validate_unicode_slug])
     date = models.DateField(default=now)
-    
+
     class Meta:
         abstract = True
 
@@ -156,7 +170,7 @@ class UserTasks(TaskforAnswer):
 
 class TaskAnswer(Answer):
     usertask = models.ForeignKey(UserTasks, on_delete=models.CASCADE, primary_key=True, unique=False)
-
+    task_number = models.PositiveIntegerField()
     def __str__(self) -> str:
         return super().__str__()
 
@@ -179,6 +193,6 @@ class UserCoursesTasks(TaskforAnswer):
 
 class UserCoursesTasksAnswer(Answer):
     uctask = models.ForeignKey(UserCoursesTasks, on_delete=models.CASCADE, primary_key=True, unique=False)
-    
+
     def __str__(self) -> str:
         return super().__str__()

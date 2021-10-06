@@ -53,7 +53,7 @@ class TaskTypewithTaskSerializer(TaskTypeSerializer):
 
 
 class QuiestionSerializer(serializers.ModelSerializer):
-    task = TaskSerializer(fields = ('id', 'name'))
+    task = TaskSerializer(fields = ('id'))
     class Meta:
         model = Questions
         fields = '__all__'
@@ -146,6 +146,13 @@ class UserCoursesTasksAnswerSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserCoursesTasksAnswer
         fields = '__all__'
+
+
+class CourseTasksSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = CourseTasks
+        fields = ['task']
 
 
 class MyUserCreateSerializer(UserCreateSerializer):

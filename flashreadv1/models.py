@@ -51,6 +51,7 @@ class Task(models.Model):
 class Questions(models.Model):
     qid = models.PositiveIntegerField(primary_key=True, default=1)
     taskid = models.ForeignKey(Task, on_delete=models.CASCADE)
+    number = models.PositiveIntegerField(default=0)
     question = models.CharField(max_length=300)
     answer = models.CharField(max_length=45, validators=[validate_unicode_slug])
     p_answer1 = models.CharField(max_length=45, blank=True)
@@ -185,6 +186,7 @@ class UserCourses(models.Model):
 
 class UserCoursesTasks(TaskforAnswer):
     usercourses = models.ForeignKey(UserCourses, on_delete=models.CASCADE, primary_key=True, unique=False)
+    task = models.ForeignKey(Task, on_delete=models.PROTECT,default=1)
     is_complete = models.BooleanField(default=False)
 
     def __str__(self) -> str:

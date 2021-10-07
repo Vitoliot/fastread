@@ -1,5 +1,5 @@
 from django.db.models import query
-from rest_framework import fields, serializers
+from rest_framework import serializers
 from .models import *
 from djoser.serializers import UserCreateSerializer
 

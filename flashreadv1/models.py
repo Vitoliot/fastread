@@ -2,6 +2,8 @@ from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.contrib.postgres.indexes import BrinIndex
+from django.db.models.signals import pre_save
+from django.dispatch.dispatcher import receiver
 from django.utils.timezone import now
 from django.core.validators import validate_unicode_slug
 from .validators import procent_validator
@@ -135,7 +137,32 @@ class UserParams(models.Model):
 
     def __str__(self) -> str:
         return super().__str__()
+    # @staticmethod
+    # def post_save(sender, **kwargs):
+    #     instance = kwargs.get('instance')
+    #     created = kwargs.get('created')
+    #     if instance.previous_state != instance.state or created:
+    #         pass
 
+# @receiver(post_save, sender = UserParams)
+# def add_course_to_user(sender, instance, **kwargs):
+#     usid = instance.user
+    # WPM_list = [0, 300, 500]
+    # BOFI_list = []
+    # VMem_list = []
+    # LMem_list = []
+    # At_list = []
+    # WPM_par = WPM_par
+    # BOFI_par = BOFI_par
+    # VMem_par = VMem_par
+    # LMem_par = LMem_par
+    # At_par = At_par
+    # courses = Course.objects.filter(
+    #     WPM_par = WPM_par,
+    #     BOFI_par = BOFI_par,
+    #     VMem_par = VMem_par, 
+    #     LMem_par = LMem_par, 
+    #     At_par = At_par)
 
 class TaskforAnswer(models.Model):
     wasted_time = models.FloatField(blank=True)
@@ -153,6 +180,7 @@ class Answer(models.Model):
     ans_number = models.PositiveIntegerField()
     answer = models.CharField(max_length=45, validators=[validate_unicode_slug])
     date = models.DateField(default=now)
+    is_correct = models.BooleanField(default=False)
 
     class Meta:
         abstract = True
@@ -174,6 +202,20 @@ class TaskAnswer(Answer):
     task_number = models.PositiveIntegerField()
     def __str__(self) -> str:
         return super().__str__()
+
+@receiver(pre_save, sender = TaskAnswer)
+def check_correctness_usertasks(sender, instance, **kwargs):
+    usertask = UserTasks.objects.get(id=instance.usertask)
+    task = usertask.task
+    questions = Questions.objects.filter(taskid = task)
+    for question in questions:
+        if question.number == instance.ans_number:
+            if question.answer == instance.answer:
+                instance.update(is_correct = True)
+    usertask.update(is_complete = True)
+    usertask.update(correctness = usertask.correctness + (1/len(questions))*100)
+    usertask.save()
+    # instance.save()
 
 
 class UserCourses(models.Model):
@@ -198,3 +240,17 @@ class UserCoursesTasksAnswer(Answer):
 
     def __str__(self) -> str:
         return super().__str__()
+
+@receiver(pre_save, sender = UserCoursesTasksAnswer)
+def check_correctness_usercoursestasks(sender, instance, **kwargs):
+    uctask = UserCoursesTasks.objects.get(id=instance.uctask)
+    task = uctask.task
+    questions = Questions.objects.filter(taskid = task)
+    for question in questions:
+        if question.number == instance.ans_number:
+            if question.answer == instance.answer:
+                instance.update(is_correct = True)
+    uctask.update(is_complete = True)
+    uctask.update(correctness = uctask.correctness + (1/len(questions))*100)
+    uctask.save()
+    # instance.save()

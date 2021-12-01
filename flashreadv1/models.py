@@ -2,14 +2,17 @@ from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.contrib.postgres.indexes import BrinIndex
-from django.db.models.signals import pre_save
+from django.db.models.signals import pre_save, post_save
 from django.dispatch.dispatcher import receiver
 from django.utils.timezone import now
-from django.core.validators import validate_unicode_slug
+from django.core.validators import RegexValidator, _lazy_re_compile
 from .validators import procent_validator
+from django.core.exceptions import ObjectDoesNotExist
 
-# добавить класс TaskType и связать с ним Task связью один ко многим и дописать сериализаторы
-
+# validate_answers = RegexValidator(
+#     _lazy_re_compile(r"/[^\.\,\-\_\'\"\@\?\!\:\$ a-zA-Z0-9А-Яа-я()]/u"),
+#     ('Enter a valid value'),
+#     'invalid')
 class TaskType(models.Model):
     type_choices = (
         (1, 'текстовое задание'),
@@ -33,14 +36,15 @@ class TaskType(models.Model):
     use_in_testing = models.BooleanField()
 
 
-
     def __str__(self):
         return self.name
 
 class Task(models.Model):
     tasktypeid = models.ForeignKey(TaskType, on_delete=models.CASCADE)
     number = models.PositiveIntegerField()
+    task_text_name = models.CharField(max_length=300, blank=True)
     task_text = models.TextField(blank=True)
+    task_text_icon = models.ImageField(blank=True, upload_to='task_icons/')
 
     class Meta:
         indexes = [
@@ -51,11 +55,12 @@ class Task(models.Model):
 
 
 class Questions(models.Model):
-    qid = models.PositiveIntegerField(primary_key=True, default=1)
     taskid = models.ForeignKey(Task, on_delete=models.CASCADE)
-    number = models.PositiveIntegerField(default=0)
+    number = models.PositiveIntegerField()
     question = models.CharField(max_length=300)
-    answer = models.CharField(max_length=45, validators=[validate_unicode_slug])
+    answer = models.CharField(max_length=45, 
+    # validators=[validate_answers,]
+    )
     p_answer1 = models.CharField(max_length=45, blank=True)
     p_answer2 = models.CharField(max_length=45, blank=True)
     p_answer3 = models.CharField(max_length=45, blank=True)
@@ -65,9 +70,9 @@ class Questions(models.Model):
 
 
 class Course(models.Model):
-    LOW = 0
-    NORMAL = 1
-    HIGH = 2
+    LOW = 1
+    NORMAL = 2
+    HIGH = 3
     PARAMS_CHOICES = (
         (LOW, 'Low'),
         (NORMAL, 'Normal'),
@@ -90,8 +95,8 @@ class Course(models.Model):
 
 
 class CourseTasks(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, default=0)
-    task = models.ForeignKey(Task, on_delete=models.SET_DEFAULT, default=1)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    task = models.ForeignKey(Task, on_delete=models.CASCADE)
 
     def __str__(self) -> str:
         return super().__str__()
@@ -99,12 +104,8 @@ class CourseTasks(models.Model):
 
 class User(AbstractUser):
     age = models.PositiveIntegerField(blank=True, default=18)
-    icon = models.ImageField(blank=True, upload_to='flashread/static/images')
+    icon = models.ImageField(blank=True, upload_to='user_icons/')
     taskinday = models.PositiveIntegerField(choices=((5, 'LOW'), (7, 'NORMAL'), (9, 'HIGH')), default=5)
-
-    # REQUIRED_FIELDS = [
-    #     'email', 'icon'
-    # ]
 
     courses = models.ManyToManyField(Course, through='UserCourses', through_fields=['user', 'course'])
     tasks = models.ManyToManyField(Task, through='UserTasks', through_fields=['user', 'task'])
@@ -113,19 +114,22 @@ class User(AbstractUser):
         return super().__str__()
 
 
-# u = get_user_model()
-
-
 class UserDaily(models.Model):
-    user = models.ForeignKey(User, on_delete=models.PROTECT, primary_key=True, unique=False)
+    user = models.ForeignKey(User, on_delete=models.PROTECT)
     task_amount = models.PositiveIntegerField()
-    # correctness_of_answers = models.PositiveIntegerField(blank=True, validators=[procent_validator])
     date = models.DateField(default=now)
+
+class UserCourses(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, default=0)
+    course = models.ForeignKey(Course, on_delete=models.PROTECT, default=0)
+    is_complete = models.BooleanField(auto_created=True, default=False)
+
+    def __str__(self) -> str:
+        return super().__str__()
 
 
 class UserParams(models.Model):
-    user = models.ForeignKey(User, on_delete=models.PROTECT, primary_key=True, unique=False)
-    idparams = models.PositiveIntegerField()
+    user = models.ForeignKey(User, on_delete=models.PROTECT)
     QER = models.PositiveIntegerField()
     WPM = models.PositiveIntegerField()
     text_proc = models.PositiveIntegerField(validators=[procent_validator])
@@ -137,37 +141,53 @@ class UserParams(models.Model):
 
     def __str__(self) -> str:
         return super().__str__()
-    # @staticmethod
-    # def post_save(sender, **kwargs):
-    #     instance = kwargs.get('instance')
-    #     created = kwargs.get('created')
-    #     if instance.previous_state != instance.state or created:
-    #         pass
 
-# @receiver(post_save, sender = UserParams)
-# def add_course_to_user(sender, instance, **kwargs):
-#     usid = instance.user
-    # WPM_list = [0, 300, 500]
-    # BOFI_list = []
-    # VMem_list = []
-    # LMem_list = []
-    # At_list = []
-    # WPM_par = WPM_par
-    # BOFI_par = BOFI_par
-    # VMem_par = VMem_par
-    # LMem_par = LMem_par
-    # At_par = At_par
-    # courses = Course.objects.filter(
-    #     WPM_par = WPM_par,
-    #     BOFI_par = BOFI_par,
-    #     VMem_par = VMem_par, 
-    #     LMem_par = LMem_par, 
-    #     At_par = At_par)
+def add_course(instance, **kwargs):
+    WPM_list = [0, 100, 300, 500]
+    BOFI_list = [0, 4, 7, 9]
+    VMem_list = [0, 30, 50, 80]
+    LMem_list = [0, 30, 50, 80]
+    At_list = [0, ((15-5)*600)/15, ((15-3)*400)/15, ((15-1)*200)/15]
+    WPM_par = BOFI_par = VMem_par = LMem_par = At_par = 0
+    for level in range(1, 4): 
+        WPM_par = level if WPM_list[level-1] < instance.WPM <= WPM_list[level] else WPM_par
+        BOFI_par = level if BOFI_list[level-1] < instance.BOFI <= BOFI_list[level] else BOFI_par
+        VMem_par = level if VMem_list[level-1] < instance.VM <= VMem_list[level] else VMem_par
+        LMem_par = level if LMem_list[level-1] < instance.LM <= LMem_list[level] else LMem_par
+        At_par = level if At_par < instance.Attention <= At_list[level] else At_par
+        print(level, WPM_par, BOFI_par, VMem_par, LMem_par, At_par)
+    # модернизировать
+    courses = Course.objects.filter(
+        WPM_par = WPM_par,
+        BOFI_par = BOFI_par,
+        VMem_par = VMem_par, 
+        LMem_par = LMem_par, 
+        At_par = At_par)
+    if len(courses) > 1:
+        # подобрать параметр разделения, либо предоставить юзеру выбор из курсов
+        UserCourses(course = courses[0], user = instance.user).save()
+    elif len(courses) == 1:
+        UserCourses(course = courses[0], user = instance.user).save()
+    else:
+        print("Под ваши параметры не нашлось доступных курсов")
+
+
+@receiver(post_save, sender = UserParams)
+def add_course_to_user(sender, instance, **kwargs):
+    print('add_course_to_user_is_work')
+    try:
+        courses = UserCourses.objects.get(user=instance.user, is_complete = False)
+        if len(courses):
+            print('Finish another course')
+    except ObjectDoesNotExist:
+        add_course(instance)
+
 
 class TaskforAnswer(models.Model):
     wasted_time = models.FloatField(blank=True)
     date = models.DateField(default=now)
-    correctness = models.PositiveIntegerField(blank=True, validators=[procent_validator])
+    correctness = models.PositiveIntegerField(default=0, blank=True, validators=[procent_validator])
+    is_complete = models.BooleanField(auto_created=True, default=False)
 
     class Meta:
         abstract = True
@@ -178,7 +198,9 @@ class TaskforAnswer(models.Model):
 
 class Answer(models.Model):
     ans_number = models.PositiveIntegerField()
-    answer = models.CharField(max_length=45, validators=[validate_unicode_slug])
+    answer = models.CharField(max_length=45, 
+    # validators=[validate_answers]
+    )
     date = models.DateField(default=now)
     is_correct = models.BooleanField(default=False)
 
@@ -198,59 +220,51 @@ class UserTasks(TaskforAnswer):
 
 
 class TaskAnswer(Answer):
-    usertask = models.ForeignKey(UserTasks, on_delete=models.CASCADE, primary_key=True, unique=False)
+    usertask = models.ForeignKey(UserTasks, on_delete=models.CASCADE)
     task_number = models.PositiveIntegerField()
     def __str__(self) -> str:
         return super().__str__()
 
 @receiver(pre_save, sender = TaskAnswer)
 def check_correctness_usertasks(sender, instance, **kwargs):
-    usertask = UserTasks.objects.get(id=instance.usertask)
+    print('check_correctness_usertasks is_work')
+    print(instance)
+    usertask = UserTasks.objects.get(id=instance.usertask.id)
     task = usertask.task
     questions = Questions.objects.filter(taskid = task)
     for question in questions:
         if question.number == instance.ans_number:
             if question.answer == instance.answer:
-                instance.update(is_correct = True)
-    usertask.update(is_complete = True)
-    usertask.update(correctness = usertask.correctness + (1/len(questions))*100)
+                instance.is_correct = True
+    usertask.is_complete = True
+    usertask.correctness = (1/len(questions))*100
     usertask.save()
-    # instance.save()
-
-
-class UserCourses(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, default=0)
-    course = models.ForeignKey(Course, on_delete=models.PROTECT, default=0)
-
-    def __str__(self) -> str:
-        return super().__str__()
 
 
 class UserCoursesTasks(TaskforAnswer):
-    usercourses = models.ForeignKey(UserCourses, on_delete=models.CASCADE, primary_key=True, unique=False)
+    usercourses = models.ForeignKey(UserCourses, on_delete=models.CASCADE)
     task = models.ForeignKey(Task, on_delete=models.PROTECT,default=1)
-    is_complete = models.BooleanField(default=False)
 
     def __str__(self) -> str:
         return super().__str__()
 
 
 class UserCoursesTasksAnswer(Answer):
-    uctask = models.ForeignKey(UserCoursesTasks, on_delete=models.CASCADE, primary_key=True, unique=False)
+    uctask = models.ForeignKey(UserCoursesTasks, on_delete=models.CASCADE)
 
     def __str__(self) -> str:
         return super().__str__()
 
 @receiver(pre_save, sender = UserCoursesTasksAnswer)
 def check_correctness_usercoursestasks(sender, instance, **kwargs):
-    uctask = UserCoursesTasks.objects.get(id=instance.uctask)
+    print('check_correctness_usercoursestasks is_work')
+    uctask = UserCoursesTasks.objects.get(id=instance.uctask.id)
     task = uctask.task
     questions = Questions.objects.filter(taskid = task)
     for question in questions:
         if question.number == instance.ans_number:
             if question.answer == instance.answer:
-                instance.update(is_correct = True)
-    uctask.update(is_complete = True)
-    uctask.update(correctness = uctask.correctness + (1/len(questions))*100)
+                instance.is_correct = True
+    uctask.is_complete = True
+    uctask.correctness = (1/len(questions))*100
     uctask.save()
-    # instance.save()

@@ -53,7 +53,7 @@ class TaskTypewithTaskSerializer(TaskTypeSerializer):
 
 
 class QuiestionSerializer(serializers.ModelSerializer):
-    task = TaskSerializer(fields = ('id'))
+    taskid = TaskSerializer(fields = ('id'))
     class Meta:
         model = Questions
         fields = '__all__'
